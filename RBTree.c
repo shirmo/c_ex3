@@ -19,8 +19,8 @@ Node * minNodeInSubTree(Node * head);
 Node * createNode(void * data);
 Node * potentialParent(RBTree *tree, Node * node);
 int checkRotationState(RBTree * tree, Node * node);
-void leftRotation(Node * grandpa, Node * parent, Node * child);
-void rightRotation(Node * grandpa, Node * parent, Node * child);
+void leftRotation(RBTree * tree, Node* z);
+void rightRotation(RBTree * tree, Node * x);
 
 /**
  * constructs a new RBTree with the given CompareFunc.
@@ -39,7 +39,7 @@ RBTree *newRBTree(CompareFunc compFunc, FreeFunc freeFunc)
     {
         return NULL;
     }
-    // initilizing default fields in tree;
+    // initializing default fields in tree;
     newTree->compFunc = compFunc;
     newTree->freeFunc = freeFunc;
     newTree->root = NO_ROOT;
@@ -52,90 +52,159 @@ RBTree *newRBTree(CompareFunc compFunc, FreeFunc freeFunc)
  * @param data: item to add to the tree.
  * @return: 0 on failure, other on success. (if the item is already in the tree - failure).
  */
-int addToRBTree(RBTree *tree, void *data)
+//int addToRBTree(RBTree *tree, void *data)
+//{
+//    if(tree == NULL || data == NULL)
+//    {
+//        return INSERT_FAILED;
+//    }
+//    if (containsRBTree(tree, data)) // Tree already contains data;
+//    {
+//        return INSERT_FAILED;
+//    }
+//    Node * newNode = createNode(data);
+//    if(newNode == NULL)
+//    {
+//        return INSERT_FAILED;
+//    }
+//    if(tree->root == NULL) // sets a root if one wasn't exists before
+//    {
+//        tree->root = newNode;
+//        newNode->color = BLACK;
+//        tree->size += 1;
+//        return INSERT_SUCCESS;
+//    }
+//    // set new node's parent
+//    Node* parent = potentialParent(tree, newNode);
+//    newNode->parent = parent;
+//    if(tree->compFunc(parent->data, newNode -> data))
+//    {
+//        parent->left = newNode;
+//    }
+//    else
+//    {
+//        parent->right = newNode;
+//    }
+//    if(parent->color == BLACK)  //no need to balance tree
+//    {
+//        return INSERT_SUCCESS;
+//    }
+//    int rotation = checkRotationState(tree, newNode);
+//}
+//
+///**
+// *
+// * @param tree RBTee
+// * @param node the node we inserted
+// * @return the type of rotation we need to make
+// */
+//int checkRotationState(RBTree * tree, Node * node)
+//{
+//    if(tree == NULL || node == NULL)
+//    {
+//        return 0;
+//    }
+//    if(tree->root == node)
+//    {
+//        node -> color = BLACK;
+//        return FIRST_STATE;
+//    }
+//    Node * parent = node->parent;
+//    if (parent->color == BLACK)
+//    {
+//        return SECOND_STATE;
+//    }
+//    Node * grandpa = parent->parent;
+//    Node * uncle = (grandpa->left == parent)?grandpa->right:grandpa->left; //set uncle
+//    if(uncle->color == RED && parent->color == RED)
+//    {
+//        return THIRD_STATE;
+//    }
+//    if(uncle->color == BLACK && parent->color == RED)
+//    {
+//        return FOURTH_STATE;
+//    }
+//    return 0;
+//}
+
+
+void balanceTree(RBTree * tree, Node * z)
 {
-    if(tree == NULL || data == NULL)
+    if(tree == NULL || z == NULL)
     {
-        return INSERT_FAILED;
+        return;
     }
-    if (containsRBTree(tree, data)) // Tree already contains data;
+    if(tree->root == z)
     {
-        return INSERT_FAILED;
+        z->color = BLACK;
+        return;
     }
-    Node * newNode = createNode(data);
-    if(newNode == NULL)
+    while (z->parent->color == RED)
     {
-        return INSERT_FAILED;
+        Node * G = z->parent->parent;
+        if(G == NULL)
+        {// Just in case, but won't get here if z is a child of a root because a root is black! so must have grandparent
+            return;
+        }
+        if (z->parent == G->left)
+        {
+            int yColor = RED;
+            Node * y = G->right;
+            if (y == NULL)
+            {
+                yColor = BLACK;
+            }
+            if(yColor == RED)
+            {
+               z->parent->color = BLACK;
+                y->color = BLACK;
+               G->color = RED;
+               z = G;
+            }
+            else if(z == z->parent->right)
+            {
+                z = z->parent;
+                leftRotation(tree, z);
+            }
+            z->parent->color = BLACK;
+            G = z->parent->parent;
+            if(G != NULL)
+            {
+                G->color = RED;
+            }
+            rightRotation(tree, G);
+        }
+        else
+        {
+            int yColor = RED;
+            Node * y = G->left;
+            if (y == NULL)
+            {
+                yColor = BLACK;
+            }
+            if(yColor == RED)
+            {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                G->color = RED;
+                z = G;
+            }
+            else if(z == z->parent->left)
+            {
+                z = z->parent;
+                rightRotation(tree, z);
+            }
+            z->parent->color = BLACK;
+            G = z->parent->parent;
+            if(G != NULL)
+            {
+                G->color = RED;
+            }
+            leftRotation(tree, G);
+        }
     }
-    if(tree->root == NULL) // sets a root if one wasn't exists before
-    {
-        tree->root = newNode;
-        newNode->color = BLACK;
-        tree->size += 1;
-        return INSERT_SUCCESS;
-    }
-    // set new node's parent
-    Node* parent = potentialParent(tree, newNode);
-    newNode->parent = parent;
-    if(tree->compFunc(parent->data, newNode -> data))
-    {
-        parent->left = newNode;
-    }
-    else
-    {
-        parent->right = newNode;
-    }
-    if(parent->color == BLACK)  //no need to balance tree
-    {
-        return INSERT_SUCCESS;
-    }
-    int rotation = checkRotationState(tree, newNode);
-}
+    tree->root->color = BLACK;
 
-/**
- *
- * @param tree RBTee
- * @param node the node we inserted
- * @return the type of rotation we need to make
- */
-int checkRotationState(RBTree * tree, Node * node)
-{
-    if(tree == NULL || node == NULL)
-    {
-        return 0;
-    }
-    if(tree->root == node)
-    {
-        node -> color = BLACK;
-        return FIRST_STATE;
-    }
-    Node * parent = node->parent;
-    if (parent->color == BLACK)
-    {
-        return SECOND_STATE;
-    }
-    Node * grandpa = parent->parent;
-    Node * uncle = (grandpa->left == parent)?grandpa->right:grandpa->left; //set uncle
-    if(uncle->color == RED && parent->color == RED)
-    {
-        return THIRD_STATE;
-    }
-    if(uncle->color == BLACK && parent->color == RED)
-    {
-        return FOURTH_STATE;
-    }
-    return 0;
-}
-
-
-void balanceTree(RBTree * tree, Node * node)
-{
-    int rotationState = checkRotationState(tree, node);
-
-    while(rotationState == THIRD_STATE)
-    {
-
-    }
 }
 
 /**
@@ -160,90 +229,154 @@ void handleThirdRotation(RBTree * tree, Node * node)
  * @param node the node we inserted
  * @return void
  */
-void handleForthRotation(Node * node)
-{
-    Node * parent = node->parent;
-    Node * grandpa = parent->parent;
-    // checks whether we need to make two rotations or only one
-    int rightLeft = (parent->right == node && grandpa->left == parent)?1:0;
-    int leftRight = (parent->left == node && grandpa->right == parent)?1:0;
-    if(rightLeft)
-    {
-        leftRotation(grandpa, parent, node);
-        parent = node; // set new parent
-    }
-    if(leftRight)
-    {
-        rightRotation(grandpa, parent, node);
-        parent = node; // set new parent
-    }
-    int rightRight = (parent->right == node && grandpa->right == parent)?1:0;
-    int leftLeft = (parent->left == node && grandpa->left == parent)?1:0;
-    if(rightRight)
-    {
-        leftRotation(grandpa->parent, grandpa, parent);
-    }
-    if(leftLeft)
-    {
-        rightRotation(grandpa->parent, grandpa, node);
-    }
-    parent->color = BLACK; // Set nodes to correct color according to algorithm
-    grandpa->color = RED;
-}
+//void handleForthRotation(Node * node)
+//{
+//    Node * parent = node->parent;
+//    Node * grandpa = parent->parent;
+//    // checks whether we need to make two rotations or only one
+//    int rightLeft = (parent->right == node && grandpa->left == parent)?1:0;
+//    int leftRight = (parent->left == node && grandpa->right == parent)?1:0;
+//    if(rightLeft)
+//    {
+//        leftRotation(grandpa, parent, node);
+//        parent = node; // set new parent
+//    }
+//    if(leftRight)
+//    {
+//        rightRotation(grandpa, parent, node);
+//        parent = node; // set new parent
+//    }
+//    int rightRight = (parent->right == node && grandpa->right == parent)?1:0;
+//    int leftLeft = (parent->left == node && grandpa->left == parent)?1:0;
+//    if(rightRight)
+//    {
+//        leftRotation(grandpa->parent, grandpa, parent);
+//    }
+//    if(leftLeft)
+//    {
+//        rightRotation(grandpa->parent, grandpa, node);
+//    }
+//    parent->color = BLACK; // Set nodes to correct color according to algorithm
+//    grandpa->color = RED;
+//}
 
-void leftRotation(Node * grandpa, Node * parent, Node * child)
+void leftRotation(RBTree * tree, Node* x)
 {
-    if (parent == NULL || child == NULL)
+    if (tree == NULL || x == NULL)
     {
+        printf("problem with input to function leftRotation");
         return;
     }
-    Node * temp = child->left;
-    child->parent = grandpa;
-    parent->left = temp;
-    parent->parent = child;
-    child->right = parent;
-    if(temp != NULL)
+    Node * y = x->right; // set y
+    if( y == NULL)
     {
-        temp->parent = parent;
+        printf("problem with input to function leftRotation - X HAS TO HAVE A RIGHT CHILD");
+        return;
     }
-    if(grandpa!=NULL) {
-        if (grandpa->right == parent)
+    x->right = y->left;
+    if(y->left != NULL)
+    {
+        y->left->parent = x;
+    }
+    y->parent = x->parent; // set's x's parent to be y's parent in order to make the shift
+    if(x->parent == NULL)
+    {
+        tree->root = y;
+    }
+    else if (x == x->parent->left)
+    {
+        x->parent->left = y;
+    }
+    else
+    {
+        x->parent->right = y;
+    }
+    y->left = x; // put x as a left child of y (now x is a child of y after y was x's)
+    x->parent = y;
+}
+
+void rightRotation(RBTree * tree, Node * x)
+{
+        if (tree == NULL || x == NULL)
         {
-            grandpa->right = child;
+            printf("problem with input to function rightRotation");
+            return;
+        }
+        Node * y = x->left; // set y
+        if( y == NULL)
+        {
+            printf("problem with input to function rightRotation - X HAS TO HAVE A LEFT CHILD");
+            return;
+        }
+        x->left = y->right;
+        if(y->right != NULL)
+        {
+            y->right->parent = x;
+        }
+        y->parent = x->parent; // set's x's parent to be y's parent in order to make the shift
+        if(x->parent == NULL)
+        {
+            tree->root = y;
+        }
+        else if (x == x->parent->right)
+        {
+            x->parent->right = y;
         }
         else
         {
-            grandpa->left = child;
+            x->parent->left = y;
         }
+        y->right = x; // put x as a right child of y (now x is a child of y after y was x's)
+        x->parent = y;
     }
-}
 
-void rightRotation(Node * grandpa, Node * parent, Node * child)
+
+int addToRBTree(RBTree *tree, void *data)
 {
-    if (parent == NULL || child == NULL)
+    if(tree == NULL || data == NULL) // checking argument validity
     {
-        return;
+        return INSERT_FAILED;
     }
-    Node * temp = child->right;
-    child->parent = grandpa;
-    parent->right = temp;
-    parent->parent = child;
-    child->left = parent;
-    if(temp != NULL)
+    if (containsRBTree(tree, data)) // Tree already contains data;
     {
-        temp->parent = parent;
+        return INSERT_FAILED;
     }
-    if(grandpa!=NULL) {
-        if (grandpa->right == parent)
+    Node * z = createNode(data); // Creating the node to be inserted
+    if(z == NULL) // checking if memory allocation worked
+    {
+        return INSERT_FAILED;
+    }
+    Node * y = NULL;
+    Node * x = tree->root;
+    while(x != NULL)
+    {
+        y = x;
+        if (data < x->data)
         {
-            grandpa->right = child;
+            x = x->left;
         }
         else
         {
-            grandpa->left = child;
+            x = x->right;
         }
     }
+    z->parent = y;
+    if(y == NULL)
+    {
+        tree->root = z;
+    }
+    else if (z->data < y->data)
+    {
+        y->left = z;
+    }
+    else
+    {
+        y->right = z;
+    }
+    balanceTree(tree, z);
 }
+
+
 
 /**
  * finds the potential parent for a node we insert to the given tree
@@ -251,22 +384,22 @@ void rightRotation(Node * grandpa, Node * parent, Node * child)
  * @param node
  * @return the father to be set in the tree
  */
-Node * potentialParent(RBTree *tree, Node * node)
-{
-    Node * current = tree -> root;
-    Node * parent = NULL;
-    int compare = 0;
-    while (current != NULL)
-    {
-        parent = current;
-        //value from compare func
-        compare =  tree->compFunc(current->data, node -> data);
-
-        // checks if current's data is grater/lower than node's data
-        current = (compare > EQUALS)? current->left:current->right;
-    }
-    return parent;
-}
+//Node * potentialParent(RBTree *tree, Node * node)
+//{
+//    Node * current = tree -> root;
+//    Node * parent = NULL;
+//    int compare = 0;
+//    while (current != NULL)
+//    {
+//        parent = current;
+//        //value from compare func
+//        compare =  tree->compFunc(current->data, node -> data);
+//
+//        // checks if current's data is grater/lower than node's data
+//        current = (compare > EQUALS)? current->left:current->right;
+//    }
+//    return parent;
+//}
 
 Node * createNode(void * data)
 {
