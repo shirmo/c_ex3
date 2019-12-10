@@ -9,6 +9,7 @@
 #define EQ 0
 #define GRT 1 // a > b
 #define SML -1 // a < b
+#define ZERO 0
 
 int compare(const double * v1, const double * v2, int len, int longer);
 double normCaLc(Vector * v);
@@ -74,7 +75,7 @@ int vectorCompare1By1(const void *a, const void *b)
     Vector * v1 = (Vector *) a;
     Vector * v2 = (Vector *) b;
     double * v1v = v1->vector;
-    double * v2v = v1->vector;
+    double * v2v = v2->vector;
     if(v1->len < v2->len)
     {
         return compare(v1v, v2v, v1->len, SML);
@@ -87,7 +88,6 @@ int vectorCompare1By1(const void *a, const void *b)
     {
         return compare(v1v, v2v, v2->len, EQ);
     }
-
 }
 
 
@@ -115,9 +115,14 @@ int compare(const double * v1, const double * v2, int len, int longer)
  */
 void freeVector(void *pVector)
 {
-    if(pVector != NULL) {
+    if(pVector != NULL)
+    {
         Vector * v = (Vector *) pVector;
-        free(v->vector);
+        if(v->vector != NULL)
+        {
+            free(v->vector);
+            v->vector = NULL;
+        }
         free(v);
     }
 }
@@ -133,27 +138,42 @@ int copyIfNormIsLarger(const void *pVector, void *pMaxVector)
 {
     if(pVector == NULL || pMaxVector == NULL)
     {
-        return 0; // todo definition faile
+        return 0; // todo definition fail
     }
     Vector * v = (Vector *) pVector;
     Vector * max = (Vector *) pMaxVector;
+    double * pt;
     if(max->vector == NULL)
     {
-        max = (Vector *) malloc(sizeof(Vector)); // todo change the malloc to be in call function
-        double * vecList = (double *) malloc(sizeof(double)*(v->len));
-        max->vector = vecList;
-        memcpy(max->vector, v->vector, sizeof(double)*(v->len));
+        max->vector = (double *) malloc(sizeof(double)*(v->len));
+        if(max->vector == NULL)
+        {
+            return 0; //TODO DEFINE
+        }
+        pt = memcpy(max->vector, v->vector, sizeof(double)*(v->len));
+        if(pt == NULL)
+        {
+            return 0; //TODO DEFINE
+        }
         max->len = v->len;
         return 1; // todo definition success
     }
     if(normCaLc(max) < normCaLc(v))
     {
-        max->vector = (double *) realloc(v->vector, sizeof(double)*(v->len));
+        max->vector = (double *) realloc(max->vector, sizeof(double)*(v->len));
+        if(max->vector == NULL)
+        {
+            return 0; //TODO DEFINE
+        }
         max->len = v->len;
+        pt = memcpy(max->vector, v->vector, sizeof(double)*(v->len));
+        if(pt == NULL)
+        {
+            return 0; //TODO DEFINE
+        }
         return 1; // todo definition success
     }
-
-
+    return 1;
 }
 
 double normCaLc(Vector * v)
@@ -174,13 +194,20 @@ double normCaLc(Vector * v)
  */
 Vector *findMaxNormVectorInTree(RBTree *tree)
 {
-    Vector * v = NULL;
+    Vector * v = (Vector *) malloc(sizeof(Vector));
+    if(v == NULL)
+    {
+        return NULL;
+    }
     v->vector = NULL;
+    v->len = ZERO;
     int a = forEachRBTree(tree, copyIfNormIsLarger, v);
     if(a)
     {
         return v;
     }
-    return NULL;
+    freeVector(v);
+    v = NULL;
+    return v;
 
 }

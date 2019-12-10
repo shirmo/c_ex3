@@ -6,21 +6,22 @@
 #define NO_ROOT NULL
 #define EMPTY_TREE 0
 #define EQUALS 0
-#define INSERT_SUCCESS 1
 #define INSERT_FAILED 0
-#define FIRST_STATE 1
-#define SECOND_STATE 2
-#define THIRD_STATE 3
-#define FOURTH_STATE 4
+#define INSERT_SUCCESS 1
+
 
 
 Node * findSuccessor(Node * start);
 Node * minNodeInSubTree(Node * head);
 Node * createNode(void * data);
 Node * potentialParent(RBTree *tree, Node * node);
-int checkRotationState(RBTree * tree, Node * node);
-void leftRotation(RBTree * tree, Node* z);
-void rightRotation(RBTree * tree, Node * x);
+
+void freeNodesInDepth(RBTree * t, Node * node);
+void leftLeftCase(Node *, RBTree *);
+void leftRightCase(Node * , RBTree *);
+void rightLeftCase(Node *, RBTree *);
+void rightRightCase(Node *, RBTree *);
+
 
 /**
  * constructs a new RBTree with the given CompareFunc.
@@ -44,7 +45,218 @@ RBTree *newRBTree(CompareFunc compFunc, FreeFunc freeFunc)
     newTree->freeFunc = freeFunc;
     newTree->root = NO_ROOT;
     newTree->size = EMPTY_TREE;
+    return newTree;
 }
+
+
+/**
+ * Finds a given node t's uncle
+ * @param nef the node we are looking it's uncle
+ * @return a pointer to the uncle node
+ */
+Node * findUncle(Node * nef)
+{
+    Node * grandparent = nef->parent->parent; //must have a grandparent because it's father is red!
+    if(grandparent->right == nef->parent)
+    {
+        return grandparent->left;
+    }
+    else
+    {
+        return grandparent->right;
+    }
+}
+
+/**
+ * finds a node's color
+ * @param node a node in the tree
+ * @return return a node's color, if node is NULL. return's BLACK
+ */
+int findColor(Node * node)
+{
+    if(node == NULL)
+    {
+        return BLACK;
+    }
+    return node->color;
+}
+
+/**
+ *
+ * @param parent
+ * @param uncle
+ * @param grandpa
+ */
+void fixColors(Node * parent, Node * uncle, Node* grandpa)
+{
+    // uncle, parent and grandparent surely exist due to having father and uncle colored red
+    parent->color = uncle->color = BLACK;
+    grandpa->color = RED;
+}
+
+/**
+ *
+ * @param node
+ */
+void handleRotation(Node * node, RBTree * tree)
+{
+    Node * parent = node->parent;
+    Node * grandparent = parent->parent;
+    if(node == parent->left)
+    {
+        if(parent == grandparent->left)
+        {
+             leftLeftCase(node, tree);
+        }
+        else
+        {
+            rightLeftCase(node, tree);
+        }
+    }
+    else
+    {
+        if(parent == grandparent->left)
+        {
+            leftRightCase(node, tree);
+        }
+        else
+            rightRightCase(node, tree);
+    }
+}
+
+
+/**
+ *
+ * @param tree
+ * @param z
+ */
+void balanceTree(RBTree * tree, Node * z)
+{
+    if(tree == NULL || z == NULL) // check if input is valid
+    {
+        return;
+    }
+    if(tree->root == z) //root fix and change;
+    {
+        z->color = BLACK;
+        return;
+    }
+    if(z->parent->color == RED) //Has a parent (checked if not above)
+    {
+        Node * uncle = findUncle(z);
+        int uncleColor = findColor(uncle);
+        if(uncleColor == RED)
+        {
+            Node * grandpa = uncle->parent;
+            fixColors(z->parent, uncle, grandpa); // parent, uncle, grandparent
+            balanceTree(tree, grandpa); // recursively fixing the grandparent
+        }
+        else
+        {
+            handleRotation(z, tree);
+        }
+    }
+    tree->root->color = BLACK;
+}
+
+void swapChildToCorrectPos(Node * parent, Node * current, Node* new)
+{
+    if(parent->right == current)
+    {
+        parent->right = new;
+    }
+    else
+    {
+        parent->left = new;
+    }
+}
+
+/**
+ *
+ * @param node
+ */
+void leftLeftCase(Node * node, RBTree * tree)
+{
+    Node * parent = node->parent;
+    Node * grandparent = parent->parent;
+    Node * upTree = grandparent->parent;
+    if(upTree)
+    {
+        swapChildToCorrectPos(upTree, grandparent, parent);
+    }
+    parent->parent = upTree;
+    grandparent->parent = parent;
+    grandparent->left = parent->right;
+    if(grandparent->left)
+    {
+        grandparent->left->parent = grandparent;
+    }
+    parent->right = grandparent;
+    parent->color = BLACK;
+    grandparent->color = RED;
+    if(parent->parent == NULL)
+    {
+        tree->root = parent;
+    }
+}
+
+void leftRightCase(Node * node, RBTree * tree)
+{
+    Node * parent = node->parent;
+    Node * grandparent = parent->parent;
+    parent->right = node->left;
+    if(parent->right)
+    {
+        parent->right->parent = parent;
+    }
+    grandparent->left = node;
+    node->parent = grandparent;
+    parent->parent = node;
+    node->left = parent;
+    leftLeftCase(parent, tree);
+}
+
+void rightRightCase(Node * node, RBTree * tree)
+{
+    Node * parent = node->parent;
+    Node * grandparent = parent->parent;
+    Node * upTree = grandparent->parent;
+    if(upTree)
+    {
+        swapChildToCorrectPos(upTree, grandparent, parent);
+    }
+    parent->parent = upTree;
+    grandparent->parent = parent;
+    grandparent->right = parent->left;
+    if(grandparent->right)
+    {
+        grandparent->right->parent = grandparent;
+    }
+    parent->left = grandparent;
+    parent->color = BLACK;
+    grandparent->color = RED;
+    if(parent->parent == NULL)
+    {
+        tree->root = parent;
+    }
+}
+
+void rightLeftCase(Node * node, RBTree * tree)
+{
+    Node * parent = node->parent;
+    Node * grandparent = parent->parent;
+    parent->left = node->right;
+    if(parent->left)
+    {
+        parent->left->parent = parent;
+    }
+    grandparent->right = node;
+    node->parent = grandparent;
+    parent->parent = node;
+    node->right = parent;
+    rightRightCase(parent, tree);
+}
+
 
 /**
  * add an item to the tree
@@ -52,285 +264,6 @@ RBTree *newRBTree(CompareFunc compFunc, FreeFunc freeFunc)
  * @param data: item to add to the tree.
  * @return: 0 on failure, other on success. (if the item is already in the tree - failure).
  */
-//int addToRBTree(RBTree *tree, void *data)
-//{
-//    if(tree == NULL || data == NULL)
-//    {
-//        return INSERT_FAILED;
-//    }
-//    if (containsRBTree(tree, data)) // Tree already contains data;
-//    {
-//        return INSERT_FAILED;
-//    }
-//    Node * newNode = createNode(data);
-//    if(newNode == NULL)
-//    {
-//        return INSERT_FAILED;
-//    }
-//    if(tree->root == NULL) // sets a root if one wasn't exists before
-//    {
-//        tree->root = newNode;
-//        newNode->color = BLACK;
-//        tree->size += 1;
-//        return INSERT_SUCCESS;
-//    }
-//    // set new node's parent
-//    Node* parent = potentialParent(tree, newNode);
-//    newNode->parent = parent;
-//    if(tree->compFunc(parent->data, newNode -> data))
-//    {
-//        parent->left = newNode;
-//    }
-//    else
-//    {
-//        parent->right = newNode;
-//    }
-//    if(parent->color == BLACK)  //no need to balance tree
-//    {
-//        return INSERT_SUCCESS;
-//    }
-//    int rotation = checkRotationState(tree, newNode);
-//}
-//
-///**
-// *
-// * @param tree RBTee
-// * @param node the node we inserted
-// * @return the type of rotation we need to make
-// */
-//int checkRotationState(RBTree * tree, Node * node)
-//{
-//    if(tree == NULL || node == NULL)
-//    {
-//        return 0;
-//    }
-//    if(tree->root == node)
-//    {
-//        node -> color = BLACK;
-//        return FIRST_STATE;
-//    }
-//    Node * parent = node->parent;
-//    if (parent->color == BLACK)
-//    {
-//        return SECOND_STATE;
-//    }
-//    Node * grandpa = parent->parent;
-//    Node * uncle = (grandpa->left == parent)?grandpa->right:grandpa->left; //set uncle
-//    if(uncle->color == RED && parent->color == RED)
-//    {
-//        return THIRD_STATE;
-//    }
-//    if(uncle->color == BLACK && parent->color == RED)
-//    {
-//        return FOURTH_STATE;
-//    }
-//    return 0;
-//}
-
-
-void balanceTree(RBTree * tree, Node * z)
-{
-    if(tree == NULL || z == NULL)
-    {
-        return;
-    }
-    if(tree->root == z)
-    {
-        z->color = BLACK;
-        return;
-    }
-    while (z->parent->color == RED)
-    {
-        Node * G = z->parent->parent;
-        if(G == NULL)
-        {// Just in case, but won't get here if z is a child of a root because a root is black! so must have grandparent
-            return;
-        }
-        if (z->parent == G->left)
-        {
-            int yColor = RED;
-            Node * y = G->right;
-            if (y == NULL)
-            {
-                yColor = BLACK;
-            }
-            if(yColor == RED)
-            {
-               z->parent->color = BLACK;
-                y->color = BLACK;
-               G->color = RED;
-               z = G;
-            }
-            else if(z == z->parent->right)
-            {
-                z = z->parent;
-                leftRotation(tree, z);
-            }
-            z->parent->color = BLACK;
-            G = z->parent->parent;
-            if(G != NULL)
-            {
-                G->color = RED;
-            }
-            rightRotation(tree, G);
-        }
-        else
-        {
-            int yColor = RED;
-            Node * y = G->left;
-            if (y == NULL)
-            {
-                yColor = BLACK;
-            }
-            if(yColor == RED)
-            {
-                z->parent->color = BLACK;
-                y->color = BLACK;
-                G->color = RED;
-                z = G;
-            }
-            else if(z == z->parent->left)
-            {
-                z = z->parent;
-                rightRotation(tree, z);
-            }
-            z->parent->color = BLACK;
-            G = z->parent->parent;
-            if(G != NULL)
-            {
-                G->color = RED;
-            }
-            leftRotation(tree, G);
-        }
-    }
-    tree->root->color = BLACK;
-
-}
-
-/**
- * Handles Third type rotation (parent and uncle are red)
- * @param tree RBTee
- * @param node the node we inserted
- * @return void
- */
-void handleThirdRotation(RBTree * tree, Node * node)
-{
-    Node * parent = node->parent;
-    Node * grandpa = parent->parent;
-    Node * uncle = (grandpa->left == parent)?grandpa->right:grandpa->left; //set uncle
-    uncle -> color = parent -> color = BLACK; // Set parent and uncle's color to Black
-    grandpa -> color = RED; // set grandpa's color to RED
-    balanceTree(tree, node);
-}
-
-/**
- * Handles Forth type rotation (parent and uncle are red)
- * @param tree RBTee
- * @param node the node we inserted
- * @return void
- */
-//void handleForthRotation(Node * node)
-//{
-//    Node * parent = node->parent;
-//    Node * grandpa = parent->parent;
-//    // checks whether we need to make two rotations or only one
-//    int rightLeft = (parent->right == node && grandpa->left == parent)?1:0;
-//    int leftRight = (parent->left == node && grandpa->right == parent)?1:0;
-//    if(rightLeft)
-//    {
-//        leftRotation(grandpa, parent, node);
-//        parent = node; // set new parent
-//    }
-//    if(leftRight)
-//    {
-//        rightRotation(grandpa, parent, node);
-//        parent = node; // set new parent
-//    }
-//    int rightRight = (parent->right == node && grandpa->right == parent)?1:0;
-//    int leftLeft = (parent->left == node && grandpa->left == parent)?1:0;
-//    if(rightRight)
-//    {
-//        leftRotation(grandpa->parent, grandpa, parent);
-//    }
-//    if(leftLeft)
-//    {
-//        rightRotation(grandpa->parent, grandpa, node);
-//    }
-//    parent->color = BLACK; // Set nodes to correct color according to algorithm
-//    grandpa->color = RED;
-//}
-
-void leftRotation(RBTree * tree, Node* x)
-{
-    if (tree == NULL || x == NULL)
-    {
-        printf("problem with input to function leftRotation");
-        return;
-    }
-    Node * y = x->right; // set y
-    if( y == NULL)
-    {
-        printf("problem with input to function leftRotation - X HAS TO HAVE A RIGHT CHILD");
-        return;
-    }
-    x->right = y->left;
-    if(y->left != NULL)
-    {
-        y->left->parent = x;
-    }
-    y->parent = x->parent; // set's x's parent to be y's parent in order to make the shift
-    if(x->parent == NULL)
-    {
-        tree->root = y;
-    }
-    else if (x == x->parent->left)
-    {
-        x->parent->left = y;
-    }
-    else
-    {
-        x->parent->right = y;
-    }
-    y->left = x; // put x as a left child of y (now x is a child of y after y was x's)
-    x->parent = y;
-}
-
-void rightRotation(RBTree * tree, Node * x)
-{
-        if (tree == NULL || x == NULL)
-        {
-            printf("problem with input to function rightRotation");
-            return;
-        }
-        Node * y = x->left; // set y
-        if( y == NULL)
-        {
-            printf("problem with input to function rightRotation - X HAS TO HAVE A LEFT CHILD");
-            return;
-        }
-        x->left = y->right;
-        if(y->right != NULL)
-        {
-            y->right->parent = x;
-        }
-        y->parent = x->parent; // set's x's parent to be y's parent in order to make the shift
-        if(x->parent == NULL)
-        {
-            tree->root = y;
-        }
-        else if (x == x->parent->right)
-        {
-            x->parent->right = y;
-        }
-        else
-        {
-            x->parent->left = y;
-        }
-        y->right = x; // put x as a right child of y (now x is a child of y after y was x's)
-        x->parent = y;
-    }
-
-
 int addToRBTree(RBTree *tree, void *data)
 {
     if(tree == NULL || data == NULL) // checking argument validity
@@ -346,34 +279,23 @@ int addToRBTree(RBTree *tree, void *data)
     {
         return INSERT_FAILED;
     }
-    Node * y = NULL;
-    Node * x = tree->root;
-    while(x != NULL)
-    {
-        y = x;
-        if (data < x->data)
-        {
-            x = x->left;
-        }
-        else
-        {
-            x = x->right;
-        }
-    }
-    z->parent = y;
-    if(y == NULL)
+    Node * pot = potentialParent(tree, z);
+    z->parent = pot;
+    if(z->parent == NULL)
     {
         tree->root = z;
     }
-    else if (z->data < y->data)
+    else if(tree->compFunc(z->data, z->parent->data)<0)
     {
-        y->left = z;
+        z->parent->left = z;
     }
     else
     {
-        y->right = z;
+        z->parent->right = z;
     }
     balanceTree(tree, z);
+    ++tree->size;
+    return INSERT_SUCCESS;
 }
 
 
@@ -384,22 +306,22 @@ int addToRBTree(RBTree *tree, void *data)
  * @param node
  * @return the father to be set in the tree
  */
-//Node * potentialParent(RBTree *tree, Node * node)
-//{
-//    Node * current = tree -> root;
-//    Node * parent = NULL;
-//    int compare = 0;
-//    while (current != NULL)
-//    {
-//        parent = current;
-//        //value from compare func
-//        compare =  tree->compFunc(current->data, node -> data);
-//
-//        // checks if current's data is grater/lower than node's data
-//        current = (compare > EQUALS)? current->left:current->right;
-//    }
-//    return parent;
-//}
+Node * potentialParent(RBTree *tree, Node * node)
+{
+    Node * current = tree -> root;
+    Node * parent = NULL;
+    int compare = 0;
+    while (current != NULL)
+    {
+        parent = current;
+        //value from compare func
+        compare =  tree->compFunc(current->data, node -> data);
+
+        // checks if current's data is grater/lower than node's data
+        current = (compare > EQUALS)? current->left:current->right;
+    }
+    return parent;
+}
 
 Node * createNode(void * data)
 {
@@ -413,6 +335,7 @@ Node * createNode(void * data)
     node->right = NULL;
     node->left = NULL;
     node->parent = NULL;
+    return node;
 }
 
 /**
@@ -463,7 +386,7 @@ int forEachRBTree(RBTree *tree, forEachFunc func, void *args) // implement it in
         return 0;
     }
     Node * start = minNodeInSubTree(tree->root);
-    int f = func(start, args);
+    int f = func(start->data, args);
     if (!f)
     {
         return 0;
@@ -471,7 +394,7 @@ int forEachRBTree(RBTree *tree, forEachFunc func, void *args) // implement it in
     Node * current = findSuccessor(start);
     while(current != NULL)
     {
-        f = func(current, args);
+        f = func(current->data, args);
         if (!f)
         {
             return 0;
@@ -489,7 +412,7 @@ int forEachRBTree(RBTree *tree, forEachFunc func, void *args) // implement it in
  */
 Node * findSuccessor(Node * start)
 {
-    if(start == NULL)
+    if(start == NULL) // checks base case
     {
         return NULL;
     }
@@ -497,19 +420,23 @@ Node * findSuccessor(Node * start)
     {
         return minNodeInSubTree(start->right); //returns the minimum of start's right child
     }
-    if (start->parent->left == start) // if start is a left child of it's parent
+    Node * parent = start->parent;
+    if(parent != NULL)
     {
-        return start->parent; // returns the parent
-    }
-    if (start->parent->right == start)
-    {
-        Node * successor = start->parent;
-        while(successor != NULL && successor->right == start)
+        if (parent->left == start) // if start is a left child of it's parent
         {
-            start = successor;
-            successor = start ->parent;
+            return start->parent; // returns the parent
         }
-        return successor; // can return a pointer because successor is not a local variable
+        if (parent->right == start)
+        {
+            Node *successor = parent;
+            while (successor != NULL && successor->right == start)
+            {
+                start = successor;
+                successor = start->parent;
+            }
+            return successor; // can return a pointer because successor is not a local variable
+        }
     }
     return NULL;
 }
@@ -531,11 +458,28 @@ Node * minNodeInSubTree(Node * head)
     return start;
 }
 
-// TODO
 void freeRBTree(RBTree *tree)
 {
     if (tree == NULL)
     {
         return;
     }
+    freeNodesInDepth(tree, tree->root);
+    free(tree);
+}
+
+void freeNodesInDepth(RBTree * t, Node * node)
+{
+    if(node == NULL)
+    {
+        return;
+    }
+    freeNodesInDepth(t, node->left);
+    freeNodesInDepth(t, node->right);
+    if (node->data != NULL)
+    {
+        t->freeFunc(node->data); // freeing data of a node
+        node->data = NULL;
+    }
+    free(node);
 }
